@@ -235,7 +235,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <input class="lc-input" id="lp" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"/>
     <button class="lc-btn" onclick="doLogin()">Access Dashboard →</button>
     <div class="lc-err" id="lerr">Invalid credentials</div>
-    <div class="lc-hint">Demo: <code>King</code> / <code>fyp2025</code></div>
+    <div class="lc-hint">Demo: <code>Abdullah</code> / <code>fyp2026</code></div>
   </div>
 </div>
 
@@ -258,7 +258,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </nav>
     <div class="sb-user">
       <div class="sb-avatar" id="sav">K</div>
-      <div><div class="sb-uname" id="sun">King</div><div class="sb-urole">Researcher</div></div>
+      <div><div class="sb-uname" id="sun">Abdullah</div><div class="sb-urole">Researcher</div></div>
       <button class="sb-logout" onclick="doLogout()">⏻</button>
     </div>
   </aside>
@@ -666,7 +666,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 // ══════════════════════════════════════
 const FB   = "https://fyp-bio-muscle-analyzer-default-rtdb.asia-southeast1.firebasedatabase.app";
 const PATH = `${FB}/users/demo_user/sessions/session_001/readings.json`;
-const USERS = { King:"fyp2025", Admin:"admin123" };
+const USERS = { Abdullah:"fyp2026", Admin:"admin123" };
 
 // MyoWare 2.0 conversion: ADC normalized (0-1) → µV
 // MyoWare gain ≈ 1000x, ESP32 ADC 3.3V reference
@@ -1066,15 +1066,10 @@ function simTick(){
 }
 
 // ── Lifecycle ──
-function startApp(){
+function startApp() {
   initCharts();
-  fetch(PATH+'?orderBy="$key"&limitToLast=1')
-    .then(r=>r.json())
-    .then(data=>{
-      if(data&&Object.keys(data).length>0){pollInt=setInterval(poll,1500);poll();}
-      else{simInt=setInterval(simTick,1000);}
-    })
-    .catch(()=>{simInt=setInterval(simTick,1000);});
+  pollInt = setInterval(poll, 1500);
+  poll();
 }
 function stopApp(){
   clearInterval(pollInt);clearInterval(simInt);
