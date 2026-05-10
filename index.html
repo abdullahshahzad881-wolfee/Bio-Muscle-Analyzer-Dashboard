@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioMuscle Analyzer — Clinical Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:      #06090f;
+  --bg2:     #0b1018;
+  --bg3:     #101622;
+  --bg4:     #151d2e;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text:    #dde4f0;
+  --text2:   #7a8ba8;
+  --text3:   #3d4f68;
+  --cyan:    #00c8e8;
+  --green:   #00dfa0;
+  --yellow:  #f5c842;
+  --orange:  #ff8c42;
+  --red:     #ff3d6b;
+  --purple:  #9d7ef0;
+  --mono:    'IBM Plex Mono', monospace;
+  --sans:    'Syne', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(0,200,232,0.04) 0%,transparent 70%),
+             radial-gradient(ellipse 40% 60% at 80% 90%,rgba(157,126,240,0.04) 0%,transparent 70%)}
+
+/* ─── LOGIN ─── */
+#login-screen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.lc{width:400px;padding:44px;background:var(--bg2);border:1px solid var(--border2);border-radius:24px;
+    box-shadow:0 60px 120px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);animation:fadeUp .5s ease both}
+.lc-logo{font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--cyan);
+         margin-bottom:36px;display:flex;align-items:center;gap:10px}
+.lc-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:blink 2s infinite}
+.lc-title{font-size:26px;font-weight:700;margin-bottom:6px;letter-spacing:-.02em}
+.lc-sub{color:var(--text2);font-size:13px;margin-bottom:36px;line-height:1.5}
+.lc-label{font-size:10px;letter-spacing:.1em;color:var(--text2);text-transform:uppercase;margin-bottom:7px;display:block}
+.lc-input{width:100%;padding:12px 16px;background:var(--bg3);border:1px solid var(--border2);
+           border-radius:10px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;
+           transition:border-color .2s;margin-bottom:14px}
+.lc-input:focus{border-color:var(--cyan)}
+.lc-btn{width:100%;padding:14px;background:var(--cyan);color:#000;font-family:var(--sans);font-weight:700;
+         font-size:14px;border:none;border-radius:10px;cursor:pointer;margin-top:4px;letter-spacing:.01em;
+         transition:opacity .2s,transform .1s}
+.lc-btn:hover{opacity:.9}
+.lc-btn:active{transform:scale(.99)}
+.lc-err{color:var(--red);font-size:12px;margin-top:10px;text-align:center;display:none}
+.lc-hint{color:var(--text3);font-size:11px;margin-top:22px;text-align:center}
+.lc-hint code{color:var(--text2);font-family:var(--mono)}
+
+/* ─── APP SHELL ─── */
+#app{display:none;min-height:100vh}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:230px;background:var(--bg2);
+          border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sb-logo{padding:24px 22px 22px;border-bottom:1px solid var(--border)}
+.sb-logo-name{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--cyan);font-weight:600}
+.sb-logo-sub{font-size:10px;color:var(--text3);margin-top:3px}
+.sb-nav{padding:18px 12px;flex:1}
+.sb-section{font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;
+             padding:0 10px;margin:14px 0 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;
+           font-size:13px;color:var(--text2);transition:all .15s;margin-bottom:1px;font-weight:500}
+.nav-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.nav-item.active{background:rgba(0,200,232,.09);color:var(--cyan)}
+.nav-icon{width:18px;text-align:center;font-size:14px;flex-shrink:0}
+.sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-family:var(--mono);
+           padding:2px 6px;border-radius:99px;display:none}
+.sb-user{padding:14px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--purple));
+            display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0}
+.sb-uname{font-size:13px;font-weight:600}
+.sb-urole{font-size:10px;color:var(--text3)}
+.sb-logout{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:4px;transition:color .15s}
+.sb-logout:hover{color:var(--red)}
+
+/* ─── MAIN ─── */
+.main{margin-left:230px;padding:26px 28px 50px;position:relative;z-index:1}
+.page{display:none}
+.page.active{display:block;animation:fadeUp .3s ease}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px}
+.page-title{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.page-sub{font-size:12px;color:var(--text2);margin-top:4px}
+.live-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;
+            background:rgba(0,223,160,.07);border:1px solid rgba(0,223,160,.2);
+            border-radius:99px;font-family:var(--mono);font-size:11px;color:var(--green)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
+
+/* ─── CARDS ─── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px}
+.card-title{font-size:10px;letter-spacing:.09em;color:var(--text3);text-transform:uppercase;margin-bottom:14px;font-weight:600}
+
+/* ─── METRIC GRID ─── */
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:14px}
+.g12{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:14px}
+
+.mcard{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;transition:border-color .2s}
+.mcard:hover{border-color:var(--border2)}
+.mcard-label{font-size:10px;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:10px;font-weight:600}
+.mcard-val{font-family:var(--mono);font-size:24px;font-weight:600;color:var(--text);line-height:1}
+.mcard-uv{font-family:var(--mono);font-size:12px;color:var(--cyan);margin-top:5px}
+.mcard-norm{font-size:10px;color:var(--text3);margin-top:2px}
+.mcard-ref{font-size:10px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+
+/* ─── STRESS LEVEL BAR ─── */
+.stress-bar-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:14px}
+.stress-bar-title{font-size:10px;letter-spacing:.09em;color:var(--text3);text-transform:uppercase;margin-bottom:18px;font-weight:600}
+.stress-segments{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+.seg{border-radius:10px;padding:12px 14px;border:1px solid transparent;transition:all .3s;opacity:.35;cursor:default}
+.seg.active{opacity:1;transform:translateY(-2px)}
+.seg-relaxed{background:rgba(0,223,160,.08);border-color:rgba(0,223,160,.25)}
+.seg-relaxed.active{background:rgba(0,223,160,.15);border-color:var(--green);box-shadow:0 0 20px rgba(0,223,160,.15)}
+.seg-mild{background:rgba(245,200,66,.06);border-color:rgba(245,200,66,.2)}
+.seg-mild.active{background:rgba(245,200,66,.12);border-color:var(--yellow);box-shadow:0 0 20px rgba(245,200,66,.12)}
+.seg-acute{background:rgba(255,140,66,.07);border-color:rgba(255,140,66,.2)}
+.seg-acute.active{background:rgba(255,140,66,.14);border-color:var(--orange);box-shadow:0 0 20px rgba(255,140,66,.15)}
+.seg-high{background:rgba(255,61,107,.07);border-color:rgba(255,61,107,.2)}
+.seg-high.active{background:rgba(255,61,107,.14);border-color:var(--red);box-shadow:0 0 20px rgba(255,61,107,.15)}
+.seg-num{font-family:var(--mono);font-size:9px;margin-bottom:6px;opacity:.7}
+.seg-name{font-size:13px;font-weight:700;margin-bottom:3px}
+.seg-range{font-family:var(--mono);font-size:9px;opacity:.7}
+.seg-desc{font-size:10px;opacity:.7;margin-top:4px;line-height:1.4}
+.stress-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stress-method-card{background:var(--bg3);border-radius:10px;padding:12px 14px;border:1px solid var(--border)}
+.sm-label{font-size:10px;color:var(--text3);margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase}
+.sm-result{font-size:14px;font-weight:700}
+.sm-conf-wrap{margin-top:8px}
+.sm-conf-bar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:4px}
+.sm-conf-fill{height:100%;border-radius:99px;transition:width .5s}
+.sm-cite{font-size:9px;color:var(--text3);margin-top:6px;font-family:var(--mono)}
+
+/* ─── FEATURE BARS ─── */
+.feat-row{margin-bottom:11px}
+.feat-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.feat-lbl{font-size:11px;color:var(--text2)}
+.feat-vals{display:flex;gap:10px;align-items:baseline}
+.feat-uv{font-family:var(--mono);font-size:12px;color:var(--cyan)}
+.feat-norm{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.feat-track{height:5px;background:var(--bg4);border-radius:99px;overflow:hidden}
+.feat-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.feat-ref{display:flex;justify-content:space-between;margin-top:2px}
+.feat-ref-lbl{font-size:9px;color:var(--text3);font-family:var(--mono)}
+
+/* ─── VALIDATION PANEL ─── */
+.val-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;margin-bottom:6px;background:var(--bg3)}
+.val-check{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.val-check.pass{background:rgba(0,223,160,.2);color:var(--green)}
+.val-check.warn{background:rgba(245,200,66,.15);color:var(--yellow)}
+.val-check.fail{background:rgba(255,61,107,.15);color:var(--red)}
+.val-name{font-size:12px;font-weight:600;flex:1}
+.val-reading{font-family:var(--mono);font-size:11px;color:var(--cyan)}
+.val-ref{font-size:10px;color:var(--text3);font-family:var(--mono);margin-left:8px}
+.val-cite{font-size:9px;color:var(--text3);margin-left:8px}
+.val-status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px}
+.vs-pass{background:rgba(0,223,160,.12);color:var(--green)}
+.vs-warn{background:rgba(245,200,66,.12);color:var(--yellow)}
+.vs-fail{background:rgba(255,61,107,.12);color:var(--red)}
+
+/* ─── POSTURE ─── */
+.posture-arm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.arm-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.arm-label{font-size:10px;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+.arm-val{font-family:var(--mono);font-size:22px;font-weight:600}
+.arm-desc{font-size:11px;color:var(--text2);margin-top:4px}
+.arm-status{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;margin-top:6px}
+
+/* ─── WARNINGS ─── */
+.warn-card{border-radius:12px;padding:14px 18px;display:flex;align-items:flex-start;gap:14px;
+            margin-bottom:8px;border:1px solid}
+.warn-card.wc-red{background:rgba(255,61,107,.07);border-color:rgba(255,61,107,.25)}
+.warn-card.wc-orange{background:rgba(255,140,66,.07);border-color:rgba(255,140,66,.25)}
+.warn-card.wc-yellow{background:rgba(245,200,66,.06);border-color:rgba(245,200,66,.2)}
+.warn-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.warn-title{font-size:13px;font-weight:700}
+.warn-desc{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5}
+.warn-time{margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono);white-space:nowrap;padding-left:10px}
+
+/* ─── HISTORY TABLE ─── */
+.htbl{width:100%;border-collapse:collapse}
+.htbl th{font-size:9px;letter-spacing:.09em;color:var(--text3);text-transform:uppercase;
+          padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-weight:600}
+.htbl td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
+.htbl tr:last-child td{border-bottom:none}
+.htbl tr:hover td{background:rgba(255,255,255,.02)}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600}
+.pr{background:rgba(255,61,107,.12);color:var(--red)}
+.pg{background:rgba(0,223,160,.1);color:var(--green)}
+.py{background:rgba(245,200,66,.1);color:var(--yellow)}
+.po{background:rgba(255,140,66,.12);color:var(--orange)}
+
+/* ─── GROWTH ─── */
+.growth-num{font-family:var(--mono);font-size:30px;font-weight:600;line-height:1}
+
+/* ─── ANIM ─── */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+.ref-tag{font-size:9px;font-family:var(--mono);color:var(--text3);background:var(--bg4);
+          padding:1px 6px;border-radius:4px;display:inline-block;margin-top:4px}
+.inline-warn{border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;
+              align-items:center;gap:12px;border:1px solid;animation:fadeUp .3s ease}
+.iw-red{background:rgba(255,61,107,.07);border-color:rgba(255,61,107,.3)}
+.iw-orange{background:rgba(255,140,66,.07);border-color:rgba(255,140,66,.3)}
+.section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:600}
+.txt-btn{background:none;border:none;color:var(--cyan);font-family:var(--sans);font-size:12px;
+          cursor:pointer;padding:4px 8px;border-radius:6px}
+.txt-btn:hover{background:rgba(0,200,232,.08)}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="lc">
+    <div class="lc-logo"><span class="lc-dot"></span>BIOMUSCLE ANALYZER v2</div>
+    <div class="lc-title">Clinical Dashboard</div>
+    <div class="lc-sub">Secure access to real-time sEMG + IMU analysis. Validated against clinical literature.</div>
+    <label class="lc-label">Username</label>
+    <input class="lc-input" id="lu" type="text" placeholder="Enter username"/>
+    <label class="lc-label">Password</label>
+    <input class="lc-input" id="lp" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="lc-btn" onclick="doLogin()">Access Dashboard →</button>
+    <div class="lc-err" id="lerr">Invalid credentials</div>
+    <div class="lc-hint">Demo: <code>King</code> / <code>fyp2025</code></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-name">BIOMUSCLE</div>
+      <div class="sb-logo-sub">Analyzer System — FYP Demo</div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Monitoring</div>
+      <div class="nav-item active" onclick="nav('live',this)"><span class="nav-icon">⚡</span>Live Monitor</div>
+      <div class="nav-item" onclick="nav('posture',this)"><span class="nav-icon">🦾</span>Posture & Form</div>
+      <div class="nav-item" onclick="nav('growth',this)"><span class="nav-icon">💪</span>Muscle Growth</div>
+      <div class="sb-section">Insights</div>
+      <div class="nav-item" onclick="nav('validation',this)"><span class="nav-icon">📐</span>Literature Validation</div>
+      <div class="nav-item" onclick="nav('warnings',this)"><span class="nav-icon">⚠️</span>Warnings<span class="sb-badge" id="wb">0</span></div>
+      <div class="nav-item" onclick="nav('history',this)"><span class="nav-icon">📋</span>Session History</div>
+    </nav>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sav">K</div>
+      <div><div class="sb-uname" id="sun">King</div><div class="sb-urole">Researcher</div></div>
+      <button class="sb-logout" onclick="doLogout()">⏻</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ══ LIVE MONITOR ══ -->
+    <div class="page active" id="page-live">
+      <div class="topbar">
+        <div><div class="page-title">Live Monitor</div><div class="page-sub">Real-time sEMG + IMU — MyoWare 2.0 + MPU-9250 on bicep/tricep</div></div>
+        <div class="live-pill"><div class="live-dot"></div>STREAMING</div>
+      </div>
+
+      <div id="inline-alert"></div>
+
+      <!-- 4-level stress bar -->
+      <div class="stress-bar-card">
+        <div class="stress-bar-title">Stress classification — 4 clinical levels (Lundberg et al., 2002)</div>
+        <div class="stress-segments">
+          <div class="seg seg-relaxed active" id="seg-0">
+            <div class="seg-num">LEVEL 0</div>
+            <div class="seg-name" style="color:var(--green)">Relaxed</div>
+            <div class="seg-range">0–15 µV above baseline</div>
+            <div class="seg-desc">Normal resting muscle state</div>
+          </div>
+          <div class="seg seg-mild" id="seg-1">
+            <div class="seg-num">LEVEL 1</div>
+            <div class="seg-name" style="color:var(--yellow)">Mild Stress</div>
+            <div class="seg-range">15–35 µV above baseline</div>
+            <div class="seg-desc">Slightly elevated, manageable</div>
+          </div>
+          <div class="seg seg-acute" id="seg-2">
+            <div class="seg-num">LEVEL 2</div>
+            <div class="seg-name" style="color:var(--orange)">Acute Stress</div>
+            <div class="seg-range">35–65 µV above baseline</div>
+            <div class="seg-desc">Noticeable psychological load</div>
+          </div>
+          <div class="seg seg-high" id="seg-3">
+            <div class="seg-num">LEVEL 3</div>
+            <div class="seg-name" style="color:var(--red)">High Stress</div>
+            <div class="seg-range">&gt;65 µV above baseline</div>
+            <div class="seg-desc">Significant physiological response</div>
+          </div>
+        </div>
+        <!-- Method comparison -->
+        <div class="stress-methods">
+          <div class="stress-method-card">
+            <div class="sm-label">Threshold model (rule-based)</div>
+            <div class="sm-result" id="sm-thresh">Waiting...</div>
+            <div class="sm-conf-wrap">
+              <div style="display:flex;justify-content:space-between">
+                <span style="font-size:10px;color:var(--text3)">Rule: RMS + MAV</span>
+                <span style="font-size:10px;font-family:var(--mono);color:var(--text2)" id="sm-thresh-pct">—</span>
+              </div>
+              <div class="sm-conf-bar"><div class="sm-conf-fill" id="cf-thresh" style="width:0%;background:var(--cyan)"></div></div>
+            </div>
+            <div class="sm-cite">Simple threshold — no training required</div>
+          </div>
+          <div class="stress-method-card">
+            <div class="sm-label">ML model — Random Forest</div>
+            <div class="sm-result" id="sm-ml">Waiting...</div>
+            <div class="sm-conf-wrap">
+              <div style="display:flex;justify-content:space-between">
+                <span style="font-size:10px;color:var(--text3)">Confidence</span>
+                <span style="font-size:10px;font-family:var(--mono);color:var(--cyan)" id="sm-ml-pct">—</span>
+              </div>
+              <div class="sm-conf-bar"><div class="sm-conf-fill" id="cf-ml" style="width:0%;background:var(--purple)"></div></div>
+            </div>
+            <div class="sm-cite">Trained on WESAD — 15 subjects, 700 Hz sEMG</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric cards with µV + normalized -->
+      <div class="g4">
+        <div class="mcard">
+          <div class="mcard-label">EMG RMS</div>
+          <div class="mcard-val" id="mv-rms">—</div>
+          <div class="mcard-uv" id="mv-rms-uv">— µV</div>
+          <div class="mcard-norm" id="mv-rms-n">normalized: —</div>
+          <div class="mcard-ref">Ref: 5–2000 µV (De Luca, 1997)</div>
+        </div>
+        <div class="mcard">
+          <div class="mcard-label">MAV</div>
+          <div class="mcard-val" id="mv-mav">—</div>
+          <div class="mcard-uv" id="mv-mav-uv">— µV</div>
+          <div class="mcard-norm" id="mv-mav-n">normalized: —</div>
+          <div class="mcard-ref">Ref: 5–1800 µV (Konrad, 2005)</div>
+        </div>
+        <div class="mcard">
+          <div class="mcard-label">Fatigue Index</div>
+          <div class="mcard-val" id="mv-fat">—</div>
+          <div class="mcard-uv" id="mv-fat-mdf">MDF: — Hz</div>
+          <div class="mcard-norm" id="mv-fat-n">baseline MDF: ~80 Hz</div>
+          <div class="mcard-ref">Ref: MDF drops ~1 Hz/s (De Luca)</div>
+        </div>
+        <div class="mcard">
+          <div class="mcard-label">Shoulder Elevation</div>
+          <div class="mcard-val" id="mv-post">—</div>
+          <div class="mcard-uv" id="mv-post-s" style="color:var(--green)">Upright</div>
+          <div class="mcard-norm" id="mv-post-n">pitch angle (IMU)</div>
+          <div class="mcard-ref">Ref: &lt;10° normal (Lundberg, 2002)</div>
+        </div>
+      </div>
+
+      <!-- Feature bars with both units -->
+      <div class="g2">
+        <div class="card">
+          <div class="card-title">Signal features — normalized (0–1) + µV</div>
+          <div id="feat-bars-live"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">EMG RMS over time (last 30s)</div>
+          <canvas id="c-rms" height="120"></canvas>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="card-title">Stress level — last 30 readings</div>
+          <canvas id="c-stress" height="100"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Fatigue index — current session</div>
+          <canvas id="c-fatigue" height="100"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ POSTURE PAGE ══ -->
+    <div class="page" id="page-posture">
+      <div class="topbar">
+        <div><div class="page-title">Posture & Form Analysis</div><div class="page-sub">MPU-9250 on bicep/tricep — 3-axis IMU data</div></div>
+        <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+      </div>
+
+      <!-- 3 IMU axes from arm -->
+      <div class="posture-arm-grid">
+        <div class="arm-card">
+          <div class="arm-label">Pitch — Shoulder elevation</div>
+          <div class="arm-val" id="pa-pitch" style="color:var(--cyan)">—°</div>
+          <div class="arm-desc">Arm raised vs lowered. High pitch = shoulder shrug = stress indicator.</div>
+          <span class="arm-status" id="pas-pitch" style="background:rgba(0,223,160,.1);color:var(--green)">Normal</span>
+          <div class="ref-tag">Ref &lt;10° — Lundberg et al. 2002</div>
+        </div>
+        <div class="arm-card">
+          <div class="arm-label">Roll — Arm rotation</div>
+          <div class="arm-val" id="pa-roll" style="color:var(--purple)">—°</div>
+          <div class="arm-desc">Pronation / supination. Monitors exercise form during curls and presses.</div>
+          <span class="arm-status" id="pas-roll" style="background:rgba(157,126,240,.1);color:var(--purple)">Normal</span>
+          <div class="ref-tag">Bicep curl: 0–90° supination</div>
+        </div>
+        <div class="arm-card">
+          <div class="arm-label">Yaw — Arm swing</div>
+          <div class="arm-val" id="pa-yaw" style="color:var(--yellow)">—°</div>
+          <div class="arm-desc">Forward / backward arm movement. Detects compensatory movement patterns.</div>
+          <span class="arm-status" id="pas-yaw" style="background:rgba(245,200,66,.08);color:var(--yellow)">Normal</span>
+          <div class="ref-tag">Deviation &gt;20° = compensation</div>
+        </div>
+      </div>
+
+      <div class="g12">
+        <div class="card" style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px">
+          <div class="card-title">Overall posture status</div>
+          <div style="font-size:52px;margin:10px 0" id="posture-emoji">🧍</div>
+          <div style="font-size:20px;font-weight:700;margin-bottom:6px" id="posture-status-text">Upright</div>
+          <div style="font-size:11px;color:var(--text2)" id="posture-advice">Good posture — continue</div>
+        </div>
+        <div class="card">
+          <div class="card-title">All 3 IMU axes — live (last 30s)</div>
+          <canvas id="c-posture" height="130"></canvas>
+        </div>
+      </div>
+
+      <div class="g3">
+        <div class="card" style="text-align:center">
+          <div class="card-title">Good form time</div>
+          <div class="growth-num" id="pp-good" style="color:var(--green);margin:12px 0">—%</div>
+          <div style="font-size:11px;color:var(--text3)">pitch &lt;10°, roll &lt;45°</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="card-title">Compensation events</div>
+          <div class="growth-num" id="pp-comp" style="color:var(--orange);margin:12px 0">0</div>
+          <div style="font-size:11px;color:var(--text3)">yaw deviation &gt;20°</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="card-title">Shoulder elevation avg</div>
+          <div class="growth-num" id="pp-avg" style="color:var(--cyan);margin:12px 0">—°</div>
+          <div style="font-size:11px;color:var(--text3)">stress proxy metric</div>
+        </div>
+      </div>
+
+      <!-- Posture grade breakdown -->
+      <div class="card">
+        <div class="card-title">Shoulder elevation grade — session breakdown</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px">
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+              <span style="font-size:11px;color:var(--green)">Upright (0–10°)</span>
+              <span style="font-size:11px;font-family:var(--mono)" id="pg0">0%</span>
+            </div>
+            <div class="feat-track"><div class="feat-fill" id="pgb0" style="background:var(--green);width:0%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+              <span style="font-size:11px;color:var(--cyan)">Mild (10–20°)</span>
+              <span style="font-size:11px;font-family:var(--mono)" id="pg1">0%</span>
+            </div>
+            <div class="feat-track"><div class="feat-fill" id="pgb1" style="background:var(--cyan);width:0%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+              <span style="font-size:11px;color:var(--orange)">Elevated (20–35°)</span>
+              <span style="font-size:11px;font-family:var(--mono)" id="pg2">0%</span>
+            </div>
+            <div class="feat-track"><div class="feat-fill" id="pgb2" style="background:var(--orange);width:0%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+              <span style="font-size:11px;color:var(--red)">Shrug (&gt;35°)</span>
+              <span style="font-size:11px;font-family:var(--mono)" id="pg3">0%</span>
+            </div>
+            <div class="feat-track"><div class="feat-fill" id="pgb3" style="background:var(--red);width:0%"></div></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:10px;color:var(--text3);font-family:var(--mono)">
+          Limitation noted: Full spinal posture requires lumbar IMU. Current MPU-9250 on bicep measures arm kinematics + shoulder elevation as stress proxy (Lundberg et al., 2002).
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MUSCLE GROWTH ══ -->
+    <div class="page" id="page-growth">
+      <div class="topbar">
+        <div><div class="page-title">Muscle Growth Tracker</div><div class="page-sub">Session iEMG trend — higher recruitment = progressive overload signal</div></div>
+      </div>
+      <div class="g4">
+        <div class="mcard">
+          <div class="mcard-label">Session iEMG</div>
+          <div class="growth-num" id="gr-iemg" style="color:var(--cyan)">—</div>
+          <div class="mcard-uv">µV·s (integrated)</div>
+          <div class="mcard-ref">Higher = more total muscle work</div>
+        </div>
+        <div class="mcard">
+          <div class="mcard-label">vs Last session</div>
+          <div class="growth-num" id="gr-vs" style="color:var(--green)">—</div>
+          <div class="mcard-uv">week-over-week</div>
+          <div class="mcard-ref">+ve = progressive overload ✓</div>
+        </div>
+        <div class="mcard">
+          <div class="mcard-label">Peak RMS today</div>
+          <div class="growth-num" id="gr-peak" style="color:var(--purple)">—</div>
+          <div class="mcard-uv" id="gr-peak-uv">— µV</div>
+          <div class="mcard-ref">Max voluntary contraction</div>
+        </div>
+        <div class="mcard">
+          <div class="mcard-label">MDF at session end</div>
+          <div class="growth-num" id="gr-mdf" style="color:var(--yellow)">—</div>
+          <div class="mcard-uv">Hz (fatigue marker)</div>
+          <div class="mcard-ref">Ref baseline: ~80 Hz</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">iEMG session history — progressive overload trend</div>
+        <canvas id="c-growth" height="100"></canvas>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="card-title">RMS per set (current session)</div>
+          <canvas id="c-sets" height="110"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Growth interpretation guide</div>
+          <div style="padding:4px 0">
+            <div style="display:flex;gap:10px;margin-bottom:14px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--green);margin-top:3px;flex-shrink:0"></div>
+              <div><div style="font-size:12px;font-weight:600;color:var(--green)">iEMG increasing (&gt;5% WoW)</div><div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">Progressive overload confirmed. Hypertrophy stimulus present. Continue current program.</div></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:14px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--yellow);margin-top:3px;flex-shrink:0"></div>
+              <div><div style="font-size:12px;font-weight:600;color:var(--yellow)">iEMG plateau (±5% WoW)</div><div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">Muscle adapted to stimulus. Increase load, volume, or tempo.</div></div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--red);margin-top:3px;flex-shrink:0"></div>
+              <div><div style="font-size:12px;font-weight:600;color:var(--red)">iEMG dropping (&lt;-5% WoW)</div><div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">Possible overtraining or underrecovery. 48h rest recommended before next session.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LITERATURE VALIDATION ══ -->
+    <div class="page" id="page-validation">
+      <div class="topbar">
+        <div><div class="page-title">Literature Validation</div><div class="page-sub">Prototype readings vs published clinical reference values — verifies measurement accuracy</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Live validation — current reading vs clinical references</div>
+        <div id="val-rows">
+          <div style="text-align:center;padding:30px;color:var(--text3)">Waiting for sensor data...</div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="card-title">Validation test protocol</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:4px">Test 1 — Baseline rest</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">Sit completely relaxed 60s. Expected RMS: <span style="font-family:var(--mono);color:var(--cyan)">5–20 µV</span></div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:4px">Test 2 — Max voluntary contraction (MVC)</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">Squeeze bicep maximally 5s. Expected RMS: <span style="font-family:var(--mono);color:var(--cyan)">500–2000 µV</span></div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:4px">Test 3 — Mental arithmetic stress</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">Count backwards from 300 by 7. Expected RMS rise: <span style="font-family:var(--mono);color:var(--cyan)">+20–80 µV</span></div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:4px">Test 4 — Fatigue protocol</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">Repeated contractions to failure. Expected MDF drop: <span style="font-family:var(--mono);color:var(--cyan)">15–30 Hz</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">References cited</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--cyan);margin-bottom:3px">De Luca, C.J. (1997)</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">The use of surface electromyography in biomechanics. <em>Journal of Applied Biomechanics</em>, 13(2), 135–163</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:4px">Used for: RMS reference ranges, MDF fatigue interpretation</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--cyan);margin-bottom:3px">Konrad, P. (2005)</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">The ABC of EMG. <em>Noraxon Inc.</em>, Scottsdale, AZ</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:4px">Used for: MAV ranges, signal quality thresholds</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--cyan);margin-bottom:3px">Lundberg et al. (2002)</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">Psychophysiological stress responses, muscle tension, and neck and shoulder pain. <em>Journal of Occupational Health Psychology</em></div>
+              <div style="font-size:10px;color:var(--text3);margin-top:4px">Used for: stress µV ranges, shoulder elevation thresholds, 4-level classification</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--cyan);margin-bottom:3px">Schmidt & Disselhorst-Klug (2009)</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">Analysis of the EMG signals during the performance of dumbbell curl exercise. <em>Clinical Neurophysiology</em></div>
+              <div style="font-size:10px;color:var(--text3);margin-top:4px">Used for: bicep curl iEMG per-set reference values</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ WARNINGS ══ -->
+    <div class="page" id="page-warnings">
+      <div class="topbar">
+        <div><div class="page-title">Warnings & Alerts</div><div class="page-sub">Auto-generated clinical alerts from live sensor data</div></div>
+        <button class="txt-btn" onclick="clearWarns()">Clear all</button>
+      </div>
+      <div id="warns-list">
+        <div style="text-align:center;padding:60px;color:var(--text3)">
+          <div style="font-size:32px;margin-bottom:12px">✅</div>No active warnings
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORY ══ -->
+    <div class="page" id="page-history">
+      <div class="topbar">
+        <div><div class="page-title">Session History</div><div class="page-sub">All Firebase readings — normalized + µV columns</div></div>
+        <button class="txt-btn" onclick="loadHistory()">↻ Refresh</button>
+      </div>
+      <div class="card">
+        <table class="htbl">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>RMS (norm)</th>
+              <th>RMS (µV)</th>
+              <th>MAV (norm)</th>
+              <th>MAV (µV)</th>
+              <th>Fatigue %</th>
+              <th>MDF (Hz)</th>
+              <th>Posture °</th>
+              <th>Threshold</th>
+              <th>ML Model</th>
+              <th>Stress Level</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="htbody">
+            <tr><td colspan="12" style="text-align:center;color:var(--text3);padding:30px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════
+const FB   = "https://fyp-bio-muscle-analyzer-default-rtdb.asia-southeast1.firebasedatabase.app";
+const PATH = `${FB}/users/demo_user/sessions/session_001/readings.json`;
+const USERS = { King:"fyp2025", Admin:"admin123" };
+
+// MyoWare 2.0 conversion: ADC normalized (0-1) → µV
+// MyoWare gain ≈ 1000x, ESP32 ADC 3.3V reference
+function toUV(norm){ return (norm * 3300).toFixed(1); }  // result in µV
+
+// Stress level from µV above baseline
+const BASELINE_UV = 15; // µV resting baseline
+function stressLevel(rmsuv){
+  const above = rmsuv - BASELINE_UV;
+  if(above < 15) return 0;
+  if(above < 35) return 1;
+  if(above < 65) return 2;
+  return 3;
+}
+const SL_NAMES  = ['Relaxed','Mild Stress','Acute Stress','High Stress'];
+const SL_COLORS = ['var(--green)','var(--yellow)','var(--orange)','var(--red)'];
+const SL_WARN   = ['wc-none','wc-yellow','wc-orange','wc-red'];
+
+// ── Auth ──
+function doLogin(){
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value;
+  if(USERS[u]&&USERS[u]===p){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('sun').textContent=u;
+    document.getElementById('sav').textContent=u[0];
+    startApp();
+  } else {
+    document.getElementById('lerr').style.display='block';
+  }
+}
+function doLogout(){
+  stopApp();
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('lu').value='';
+  document.getElementById('lp').value='';
+  document.getElementById('lerr').style.display='none';
+}
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='history') loadHistory();
+}
+
+// ══════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════
+let cRms,cStress,cFatigue,cPosture,cGrowth,cSets;
+const PAST = [{l:'S1',v:3800},{l:'S2',v:4100},{l:'S3',v:3950},{l:'S4',v:4350},{l:'S5',v:4600},{l:'Now',v:0}];
+
+function mkLine(id,color,yOpts={}){
+  const ctx=document.getElementById(id)?.getContext('2d');
+  if(!ctx)return null;
+  return new Chart(ctx,{type:'line',data:{labels:[],datasets:[{data:[],borderColor:color,borderWidth:1.8,
+    pointRadius:0,tension:0.4,fill:true,backgroundColor:color.replace('var(','').replace(')','')+'22'}]},
+    options:{animation:false,responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#3d4f68',maxTicksLimit:6,font:{family:'IBM Plex Mono',size:9}}},
+              y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#3d4f68',font:{family:'IBM Plex Mono',size:9}},...yOpts}}}});
+}
+
+function initCharts(){
+  cRms     = mkLine('c-rms',    'var(--cyan)',   {min:0,max:1.2,title:{display:true,text:'normalized',color:'#3d4f68',font:{size:9}}});
+  cStress  = mkLine('c-stress', 'var(--red)',    {min:-0.2,max:3.2,ticks:{callback:v=>[,'Mild','Acute','High'][v]||'Relaxed'}});
+  cFatigue = mkLine('c-fatigue','var(--orange)', {min:0,max:100});
+  cPosture = mkLine('c-posture','var(--purple)', {min:-60,max:60});
+
+  const gCtx=document.getElementById('c-growth')?.getContext('2d');
+  if(gCtx) cGrowth=new Chart(gCtx,{type:'bar',data:{labels:PAST.map(s=>s.l),
+    datasets:[{data:PAST.map(s=>s.v),backgroundColor:PAST.map((_,i)=>i===PAST.length-1?'rgba(0,200,232,.6)':'rgba(0,200,232,.2)'),borderRadius:6,borderSkipped:false}]},
+    options:{animation:false,responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#3d4f68',font:{size:9}}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#3d4f68',font:{size:9}}}}}});
+
+  const sCtx=document.getElementById('c-sets')?.getContext('2d');
+  if(sCtx) cSets=new Chart(sCtx,{type:'bar',data:{labels:['Set 1','Set 2','Set 3','Set 4','Set 5'],
+    datasets:[{data:[142,135,121,118,109],backgroundColor:'rgba(0,223,160,.25)',borderColor:'rgba(0,223,160,.7)',borderWidth:1.5,borderRadius:5}]},
+    options:{animation:false,responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#3d4f68',font:{size:9}}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#3d4f68',font:{size:9}}}}}});
+
+  initFeatBars();
+}
+
+function push(chart,val,lbl){
+  if(!chart)return;
+  chart.data.labels.push(lbl);
+  chart.data.datasets[0].data.push(val);
+  if(chart.data.labels.length>30){chart.data.labels.shift();chart.data.datasets[0].data.shift();}
+  chart.update();
+}
+
+// ── Feature bars ──
+const FEATS=[
+  {id:'rms',  lbl:'RMS',      color:'var(--cyan)',   max:1,   ref:'5–2000 µV',    paper:'De Luca 1997'},
+  {id:'mav',  lbl:'MAV',      color:'var(--green)',  max:1,   ref:'5–1800 µV',    paper:'Konrad 2005'},
+  {id:'zcr',  lbl:'ZCR',      color:'var(--purple)', max:0.5, ref:'0.05–0.35',    paper:'Konrad 2005'},
+  {id:'var',  lbl:'Variance', color:'var(--yellow)', max:0.1, ref:'signal stability', paper:'De Luca 1997'},
+];
+function initFeatBars(){
+  const wrap=document.getElementById('feat-bars-live');
+  if(!wrap)return;
+  wrap.innerHTML=FEATS.map(f=>`
+    <div class="feat-row">
+      <div class="feat-head">
+        <span class="feat-lbl">${f.lbl}</span>
+        <div class="feat-vals">
+          <span class="feat-uv" id="fuv-${f.id}">— µV</span>
+          <span class="feat-norm" id="fn-${f.id}">(—)</span>
+        </div>
+      </div>
+      <div class="feat-track"><div class="feat-fill" id="fb-${f.id}" style="background:${f.color};width:0%"></div></div>
+      <div class="feat-ref"><span class="feat-ref-lbl">Ref: ${f.ref}</span><span class="feat-ref-lbl">${f.paper}</span></div>
+    </div>`).join('');
+}
+
+function updFeat(id,norm,max){
+  const uv = toUV(norm);
+  const el1=document.getElementById('fuv-'+id);
+  const el2=document.getElementById('fn-'+id);
+  const fb=document.getElementById('fb-'+id);
+  if(el1)el1.textContent=uv+' µV';
+  if(el2)el2.textContent='('+norm.toFixed(3)+')';
+  if(fb)fb.style.width=Math.min(norm/max*100,100)+'%';
+}
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let warns=[],warnCnt=0,postureHist=[],compEvents=0,sessionIemg=0,peakRms=0,lastKey=null,pollInt,simInt;
+
+// ── Stress segments ──
+function setStressSeg(lvl){
+  for(let i=0;i<4;i++){
+    const el=document.getElementById('seg-'+i);
+    if(el){el.classList.toggle('active',i===lvl);}
+  }
+}
+
+// ── Stress method cards ──
+function setMethod(thId,mlId,stTh,stMl,conf){
+  const thEl=document.getElementById(thId);
+  const mlEl=document.getElementById(mlId);
+  const thLvl=stTh; const mlLvl=stMl;
+  if(thEl){thEl.textContent=SL_NAMES[thLvl];thEl.style.color=SL_COLORS[thLvl];}
+  if(mlEl){mlEl.textContent=SL_NAMES[mlLvl];mlEl.style.color=SL_COLORS[mlLvl];}
+  document.getElementById('sm-thresh-pct').textContent=thLvl===0?'90%':thLvl===1?'75%':'60%';
+  document.getElementById('cf-thresh').style.width=(thLvl===0?90:thLvl===1?75:60)+'%';
+  document.getElementById('sm-ml-pct').textContent=conf.toFixed(1)+'%';
+  document.getElementById('cf-ml').style.width=conf+'%';
+}
+
+// ══════════════════════════════════════
+// PROCESS READING
+// ══════════════════════════════════════
+function process(d){
+  const t=new Date().toLocaleTimeString();
+  const rms   = parseFloat(d.rms??d.emg_rms??0);
+  const mav   = parseFloat(d.mav??0);
+  const zcr   = parseFloat(d.zcr??0);
+  const vari  = parseFloat(d.variance??0);
+  const pitch = parseFloat(d.posture_angle??d.pitch??0);
+  const roll  = parseFloat(d.roll??0);
+  const yaw   = parseFloat(d.yaw??0);
+  const fat   = parseFloat(d.fatigue_pct??0);
+  const mdf   = parseFloat(d.mdf??80-fat*0.3);
+  const conf  = parseFloat(d.ml_confidence??75);
+
+  const rmsUV = parseFloat(toUV(rms));
+  const mavUV = parseFloat(toUV(mav));
+  const lvlUV = stressLevel(rmsUV);
+  const stTh  = parseInt(d.stress_threshold??(rms>0.5&&mav>0.4?Math.min(lvlUV,3):0));
+  const stMl  = parseInt(d.stress_ml??lvlUV);
+
+  // ─ Live monitor ─
+  setStressSeg(stMl);
+  setMethod('sm-thresh','sm-ml',stTh,stMl,conf);
+
+  document.getElementById('mv-rms').textContent   = rms.toFixed(3);
+  document.getElementById('mv-rms-uv').textContent= rmsUV.toFixed(1)+' µV';
+  document.getElementById('mv-rms-n').textContent = 'normalized: '+rms.toFixed(3);
+  document.getElementById('mv-mav').textContent   = mav.toFixed(3);
+  document.getElementById('mv-mav-uv').textContent= mavUV.toFixed(1)+' µV';
+  document.getElementById('mv-mav-n').textContent = 'normalized: '+mav.toFixed(3);
+  document.getElementById('mv-fat').textContent   = fat.toFixed(1)+'%';
+  document.getElementById('mv-fat-mdf').textContent='MDF: '+mdf.toFixed(1)+' Hz';
+  document.getElementById('mv-post').textContent  = pitch.toFixed(1)+'°';
+
+  const pa=Math.abs(pitch);
+  let pStatus,pColor;
+  if(pa<10){pStatus='Upright';pColor='var(--green)';}
+  else if(pa<20){pStatus='Mild elevation';pColor='var(--cyan)';}
+  else if(pa<35){pStatus='Elevated';pColor='var(--orange)';}
+  else{pStatus='Shrug — stress';pColor='var(--red)';}
+  document.getElementById('mv-post-s').textContent=pStatus;
+  document.getElementById('mv-post-s').style.color=pColor;
+
+  updFeat('rms',rms,1); updFeat('mav',mav,1); updFeat('zcr',zcr,0.5); updFeat('var',vari,0.1);
+  push(cRms,rms,t); push(cStress,stMl,t); push(cFatigue,fat,t);
+
+  // ─ Posture page ─
+  const axes=[['pa-pitch','pas-pitch',pitch,10,20,35,'Shoulder normal','Mild elevation','Elevated!','Shrug!'],
+               ['pa-roll','pas-roll',roll,45,80,110,'Normal rotation','Overrotating','Extreme rotation','Form break'],
+               ['pa-yaw','pas-yaw',yaw,20,35,50,'Normal swing','Compensating','High compensation','Form break']];
+  axes.forEach(([vid,sid,val,t1,t2,t3,...labels])=>{
+    const el=document.getElementById(vid);if(el)el.textContent=val.toFixed(1)+'°';
+    const abs=Math.abs(val);
+    let lbl,clr,bg;
+    if(abs<t1){lbl=labels[0];clr='var(--green)';bg='rgba(0,223,160,.1)';}
+    else if(abs<t2){lbl=labels[1];clr='var(--yellow)';bg='rgba(245,200,66,.08)';}
+    else if(abs<t3){lbl=labels[2];clr='var(--orange)';bg='rgba(255,140,66,.1)';}
+    else{lbl=labels[3];clr='var(--red)';bg='rgba(255,61,107,.1)';}
+    const sel=document.getElementById(sid);
+    if(sel){sel.textContent=lbl;sel.style.color=clr;sel.style.background=bg;}
+  });
+
+  push(cPosture,pitch,t);
+  postureHist.push(pa);
+  if(Math.abs(yaw)>20)compEvents++;
+
+  const tot=postureHist.length;
+  const grades=[postureHist.filter(a=>a<10).length,postureHist.filter(a=>a>=10&&a<20).length,
+                postureHist.filter(a=>a>=20&&a<35).length,postureHist.filter(a=>a>=35).length];
+  grades.forEach((g,i)=>{
+    const pct=(g/tot*100).toFixed(0);
+    const pe=document.getElementById('pg'+i);const pb=document.getElementById('pgb'+i);
+    if(pe)pe.textContent=pct+'%';if(pb)pb.style.width=pct+'%';
+  });
+  const good=(grades[0]/tot*100).toFixed(0);
+  const avgP=(postureHist.reduce((a,b)=>a+b,0)/tot).toFixed(1);
+  ['pp-good','pp-comp','pp-avg'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el)el.textContent=[good+'%',compEvents,avgP+'°'][i];
+  });
+
+  let pEmoji='🧍',pText='Upright',pAdv='Good posture — continue';
+  if(pa>=10&&pa<20){pEmoji='🕴️';pText='Mild elevation';pAdv='Slightly raised shoulder — relax';}
+  else if(pa>=20&&pa<35){pEmoji='🙇';pText='Shoulder elevated';pAdv='Stress indicator — lower shoulders';}
+  else if(pa>=35){pEmoji='⚠️';pText='High elevation';pAdv='Strong stress signal — take a break';}
+  ['posture-emoji','posture-status-text','posture-advice'].forEach((id,i)=>{
+    const el=document.getElementById(id);if(el)el.textContent=[pEmoji,pText,pAdv][i];
+  });
+
+  // ─ Growth ─
+  sessionIemg+=mav*200;
+  if(rms>peakRms)peakRms=rms;
+  const prev=4600;
+  const diff=((sessionIemg-prev)/prev*100);
+  const ge=document.getElementById('gr-iemg');if(ge)ge.textContent=sessionIemg.toFixed(0);
+  const gv=document.getElementById('gr-vs');if(gv){gv.textContent=(diff>=0?'+':'')+diff.toFixed(1)+'%';gv.style.color=diff>5?'var(--green)':diff>-5?'var(--yellow)':'var(--red)';}
+  const gp=document.getElementById('gr-peak');if(gp)gp.textContent=peakRms.toFixed(3);
+  const gpu=document.getElementById('gr-peak-uv');if(gpu)gpu.textContent=toUV(peakRms)+' µV';
+  const gm=document.getElementById('gr-mdf');if(gm)gm.textContent=mdf.toFixed(1);
+  PAST[PAST.length-1].v=sessionIemg;
+  if(cGrowth){cGrowth.data.datasets[0].data=PAST.map(s=>s.v);cGrowth.update();}
+
+  // ─ Validation ─
+  const checks=[
+    {name:'Resting RMS (baseline)',reading:rmsUV,unit:'µV',min:5,max:2000,
+     ref:'5–2000 µV',cite:'De Luca 1997',note:'Wide range — covers rest to MVC'},
+    {name:'MAV level',reading:mavUV,unit:'µV',min:5,max:1800,
+     ref:'5–1800 µV',cite:'Konrad 2005',note:'Mean absolute value in µV'},
+    {name:'Fatigue index',reading:fat,unit:'%',min:0,max:100,
+     ref:'0–100%',cite:'De Luca 1997',note:'0 = fresh, 100 = fully fatigued'},
+    {name:'Median frequency',reading:mdf,unit:'Hz',min:40,max:120,
+     ref:'40–120 Hz',cite:'De Luca 1997',note:'Drops during fatigue'},
+    {name:'Shoulder elevation angle',reading:pa,unit:'°',min:0,max:10,
+     ref:'<10° at rest',cite:'Lundberg 2002',note:'<10° = normal resting posture'},
+  ];
+  const vr=document.getElementById('val-rows');
+  if(vr){
+    vr.innerHTML=checks.map(c=>{
+      const pass=c.reading>=c.min&&c.reading<=c.max;
+      const warn=!pass&&c.reading<c.min*0.5||c.reading>c.max*1.5;
+      const stat=pass?'WITHIN REF':warn?'OUT OF RANGE':'BORDERLINE';
+      const cls=pass?'vs-pass':warn?'vs-fail':'vs-warn';
+      const chk=pass?'✓':warn?'✗':'~';
+      const chkCls=pass?'pass':warn?'fail':'warn';
+      return `<div class="val-row">
+        <div class="val-check ${chkCls}">${chk}</div>
+        <div class="val-name">${c.name}</div>
+        <div class="val-reading">${c.reading.toFixed(1)} ${c.unit}</div>
+        <div class="val-ref">Ref: ${c.ref}</div>
+        <div class="val-cite">${c.cite}</div>
+        <span class="val-status ${cls}">${stat}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ─ Warnings ─
+  const ai=document.getElementById('inline-alert');
+  if(stMl>=2&&stTh>=1){
+    addWarn('wc-red','🚨',`${SL_NAMES[stMl]} detected`,`ML: ${SL_NAMES[stMl]} (${conf.toFixed(1)}% conf) | Threshold: ${SL_NAMES[stTh]} | RMS: ${rmsUV} µV`);
+    if(ai)ai.innerHTML=`<div class="inline-warn iw-red"><span style="font-size:18px">🚨</span><div><div style="font-size:13px;font-weight:700">${SL_NAMES[stMl]}</div><div style="font-size:11px;color:var(--text2)">Both models agree — ${rmsUV} µV | Conf: ${conf.toFixed(1)}%</div></div></div>`;
+    setTimeout(()=>{if(ai)ai.innerHTML=''},6000);
+  }
+  if(fat>70) addWarn('wc-orange','⚠️','High fatigue',`Fatigue at ${fat.toFixed(1)}% | MDF: ${mdf.toFixed(1)} Hz — rest recommended`);
+  if(pa>30)  addWarn('wc-orange','⚠️','Shoulder elevation',`Pitch ${pa.toFixed(1)}° — stress indicator (ref: <10°, Lundberg 2002)`);
+}
+
+// ── Warnings ──
+function addWarn(cls,icon,title,desc){
+  warns.push({cls,icon,title,desc,time:new Date().toLocaleTimeString()});
+  warnCnt++;
+  renderWarns();
+  const wb=document.getElementById('wb');
+  if(wb){wb.style.display='inline';wb.textContent=warnCnt;}
+}
+function renderWarns(){
+  const el=document.getElementById('warns-list');
+  if(!el)return;
+  if(!warns.length){el.innerHTML='<div style="text-align:center;padding:60px;color:var(--text3)"><div style="font-size:32px;margin-bottom:12px">✅</div>No active warnings</div>';return;}
+  el.innerHTML=[...warns].reverse().map(w=>`
+    <div class="warn-card ${w.cls}">
+      <div class="warn-icon">${w.icon}</div>
+      <div><div class="warn-title">${w.title}</div><div class="warn-desc">${w.desc}</div></div>
+      <div class="warn-time">${w.time}</div>
+    </div>`).join('');
+}
+function clearWarns(){warns=[];warnCnt=0;renderWarns();const wb=document.getElementById('wb');if(wb)wb.style.display='none';}
+
+// ── History ──
+const SL_PILL=['pg','py','po','pr'];
+async function loadHistory(){
+  const tb=document.getElementById('htbody');
+  if(!tb)return;
+  tb.innerHTML=`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">Loading...</td></tr>`;
+  try{
+    const r=await fetch(PATH+'?orderBy="$key"&limitToLast=50');
+    const data=await r.json();
+    if(!data){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">No data yet</td></tr>`;return;}
+    const rows=Object.entries(data).reverse().map(([k,d])=>{
+      const rms=parseFloat(d.rms??d.emg_rms??0);
+      const mav=parseFloat(d.mav??0);
+      const rmsUV=toUV(rms);const mavUV=toUV(mav);
+      const fat=parseFloat(d.fatigue_pct??0);
+      const mdf=parseFloat(d.mdf??80);
+      const pitch=parseFloat(d.posture_angle??0);
+      const conf=parseFloat(d.ml_confidence??75);
+      const stTh=parseInt(d.stress_threshold??0);
+      const stMl=parseInt(d.stress_ml??0);
+      const lvl=stressLevel(parseFloat(rmsUV));
+      const ts=new Date().toLocaleTimeString();
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:10px">${ts}</td>
+        <td style="font-family:var(--mono)">${rms.toFixed(3)}</td>
+        <td style="font-family:var(--mono);color:var(--cyan)">${rmsUV} µV</td>
+        <td style="font-family:var(--mono)">${mav.toFixed(3)}</td>
+        <td style="font-family:var(--mono);color:var(--cyan)">${mavUV} µV</td>
+        <td><span class="pill ${fat>70?'pr':fat>40?'po':'pg'}">${fat.toFixed(1)}%</span></td>
+        <td style="font-family:var(--mono)">${mdf.toFixed(1)} Hz</td>
+        <td style="font-family:var(--mono)">${pitch.toFixed(1)}°</td>
+        <td><span class="pill ${stTh>0?'pr':'pg'}">${SL_NAMES[stTh]}</span></td>
+        <td><span class="pill ${stMl>0?'pr':'pg'}">${SL_NAMES[stMl]}</span></td>
+        <td><span class="pill ${SL_PILL[lvl]}">${SL_NAMES[lvl]}</span></td>
+        <td style="font-family:var(--mono)">${conf.toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+    tb.innerHTML=rows||`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px">No data</td></tr>`;
+  }catch(e){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;color:var(--red);padding:20px">Error — check Firebase rules</td></tr>`;}
+}
+
+// ── Firebase polling ──
+async function poll(){
+  try{
+    const r=await fetch(PATH+'?orderBy="$key"&limitToLast=3');
+    if(!r.ok)return;
+    const data=await r.json();if(!data)return;
+    const keys=Object.keys(data).sort();
+    const newest=keys[keys.length-1];
+    if(newest===lastKey)return;
+    lastKey=newest;
+    process(data[newest]);
+  }catch(e){console.warn(e);}
+}
+
+// ── Simulation ──
+let simT=0;
+function simTick(){
+  simT++;
+  const rms    = 0.25+0.45*Math.abs(Math.sin(simT*0.08))+(Math.random()-.5)*.04;
+  const mav    = rms*.88+(Math.random()-.5)*.03;
+  const zcr    = 0.08+0.18*Math.random();
+  const vari   = rms*rms*.25+Math.random()*.008;
+  const pitch  = 8*Math.sin(simT*0.06)+(Math.random()-.5)*10;
+  const roll   = 30*Math.sin(simT*0.04)+(Math.random()-.5)*8;
+  const yaw    = 12*Math.sin(simT*0.03)+(Math.random()-.5)*6;
+  const fat    = Math.min(100,15+simT*.35+(Math.random()-.5)*4);
+  const mdf    = Math.max(40,85-simT*.25+(Math.random()-.5)*3);
+  const conf   = 70+Math.random()*25;
+  const rmsUV  = parseFloat(toUV(rms));
+  const stMl   = stressLevel(rmsUV);
+  const stTh   = rms>0.5&&mav>0.4?Math.min(stMl,3):0;
+  process({rms,mav,zcr,variance:vari,posture_angle:pitch,pitch,roll,yaw,
+            fatigue_pct:fat,mdf,stress_threshold:stTh,stress_ml:stMl,ml_confidence:conf});
+}
+
+// ── Lifecycle ──
+function startApp(){
+  initCharts();
+  fetch(PATH+'?orderBy="$key"&limitToLast=1')
+    .then(r=>r.json())
+    .then(data=>{
+      if(data&&Object.keys(data).length>0){pollInt=setInterval(poll,1500);poll();}
+      else{simInt=setInterval(simTick,1000);}
+    })
+    .catch(()=>{simInt=setInterval(simTick,1000);});
+}
+function stopApp(){
+  clearInterval(pollInt);clearInterval(simInt);
+  warns=[];warnCnt=0;postureHist=[];compEvents=0;sessionIemg=0;peakRms=0;lastKey=null;simT=0;
+}
+</script>
+</body>
+</html>
