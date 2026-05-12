@@ -732,7 +732,7 @@ function mkLine(id,color,yOpts={}){
 }
 
 function initCharts(){
-  cRms     = mkLine('c-rms',    'var(--cyan)',   {min:0,max:1.2,title:{display:true,text:'normalized',color:'#3d4f68',font:{size:9}}});
+  cRms     = mkLine('c-rms',    'red',   {min:0,max:1.2,title:{display:true,text:'normalized',color:'#3d4f68',font:{size:9}}});
   cStress  = mkLine('c-stress', 'var(--red)',    {min:-0.2,max:3.2,ticks:{callback:v=>[,'Mild','Acute','High'][v]||'Relaxed'}});
   cFatigue = mkLine('c-fatigue','var(--orange)', {min:0,max:100});
   cPosture = mkLine('c-posture','var(--purple)', {min:-60,max:60});
